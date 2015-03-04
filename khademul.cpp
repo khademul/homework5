@@ -2,14 +2,13 @@
    CIVL 8903
    Khademul Haque
    URL:https://github.com/khademul/homework5
-*/
+ */
 
 #include <iostream>
-// fixes
-#include <cstdio> // for printf
-#include <cstring> // for atoi
-#include <cstdlib> // for exit
-#define EXIT_FAILURE 1
+#include <algorithm>
+#include <string.h>
+#include <stdlib.h>
+#include <fstream>
 
 using namespace std;
 
@@ -29,7 +28,7 @@ void printLog(char *strLog) {
 }
 
 int isIntegerString(char *str) {
-	for(int i=0; i<strlen(str); i++) {
+	for(unsigned int i=0; i<strlen(str); i++) {
 		if((str[i]>='0' && str[i]<='9') || str[i]=='-' || str[i]=='+') {
 
 		} else {
@@ -41,13 +40,13 @@ int isIntegerString(char *str) {
 int atoi_h(char *str) {
 	if(!isIntegerString(str)) {
 		printLog("Error: Integer Expected");
-		exit(EXIT_FAILURE);
+		exit(1);
 	}
 	return atoi(str);
 }
 
 int isFloatString(char *str) {
-	for(int i=0; i<strlen(str); i++) {
+	for(unsigned int i=0; i<strlen(str); i++) {
 		if((str[i]>='0' && str[i]<='9') || str[i]=='.' || str[i]=='-' || str[i]=='+') {
 
 		} else {
@@ -61,7 +60,7 @@ float atof_h(char *str) {
 	if(!isFloatString(str)) {
 		printLog("Error: Real Number Expected");
 		printLog(str);
-		exit(EXIT_FAILURE);
+		exit(1);
 	}
 	return atof(str);
 }
@@ -74,7 +73,7 @@ int isEqualCI(char *s1, char *s2) {
 	if(strlen(s1)!=strlen(s2)) {
 		return 0;
 	}
-	for(int i=0; i<strlen(s1); i++) {
+	for(unsigned int i=0; i<strlen(s1); i++) {
 		if(tolower(s1[i])!=tolower(s2[i])) {
 			return 0;
 		}
@@ -92,46 +91,58 @@ void trimLastNewLines(char *str) {
 	}
 }
 
+static inline std::string &ltrim(std::string &s) {
+        s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
+        return s;
+}
+
+static inline std::string &rtrim(std::string &s) {
+        s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+        return s;
+}
+
+static inline std::string &trim(std::string &s) {
+        return ltrim(rtrim(s));
+}
+
 int main() {
-	char *line = NULL;
+	string line;
 	char strTmp[256];
 	char inputFilePath[1024];
-	size_t len = 0;
-	size_t read;
 
 	printf("Input File: ");
-	cin>>inputFilePath;
+	std::cin>>inputFilePath;
 
-
-	fpLog = fopen("earthquake.log", "w");
+	fpLog = fopen("khademul.log", "w");
 	if(fpLog==NULL) {
 		printf("Unable to open earthquake.log. Check permission\n");
-		exit(EXIT_FAILURE);
+		exit(1);
 	}
-
 
 	sprintf(strTmp, "Opening file:%s",inputFilePath);
 	printLog(strTmp);
 
-	FILE *fp = fopen(inputFilePath, "r");
-	if (fp == NULL) {
+	std::ifstream fp(inputFilePath);
+	if (!fp.is_open()) {
 		printLog("Input file not exist");
-		exit(EXIT_FAILURE);
+		exit(1);
 	}
 
 	printLog("Processing input...");
-	char *eventId = NULL;
-	if(getline(&eventId, &len, fp)==-1) {
+	string eventId;
+	if(!getline(fp, eventId)) {
 		printLog("Error in Header File: No Event ID");
 		return 0;
 	}
-	trimLastNewLines(eventId);
-	if(getline(&line, &len, fp)==-1) {
+	eventId = trim(eventId);
+
+	if(!getline(fp, line)) {
 		printLog("Error in Header File: Date Time Row Missing");
 		return 0;
 	}
+	line = trim(line);
 
-	char *dateStr = strtok(line, " \r\n");
+	char *dateStr = strtok((char *)line.c_str(), " \r\n");
 	if (dateStr == NULL) {
 		printLog("Error in Header File: Date Error");
 		return 0;
@@ -170,18 +181,20 @@ int main() {
 		printLog("Error in Header File: Time format error");
 		return 0;
 	}
-	char *earthquakeName = NULL;
-	if(getline(&earthquakeName, &len, fp)==-1) {
+	string earthquakeName;
+	if(!getline(fp,earthquakeName)) {
 		printLog("Error in Header File: Earthquake Name Missing");
 		return 0;
 	}
-	trimLastNewLines(earthquakeName);
+	earthquakeName = trim(earthquakeName);
+	//trimLastNewLines(earthquakeName);
 
-	if(getline(&line, &len, fp)==-1) {
+	if(!getline(fp,line)) {
 		printLog("Error in Header File: Latitude Longitude Line Missing");
 		return 0;
 	}
-	double longitude = atof_h(strtok(line," \r\n"));
+	line = trim(line);
+	double longitude = atof_h(strtok((char *)line.c_str()," \r\n"));
 	double latitude = atof_h(strtok(NULL," \r\n"));
 	double depth = atof_h(strtok(NULL," \r\n"));
 
@@ -205,10 +218,10 @@ int main() {
 	}
 	printLog("Header read correctly!");
 
-	FILE *fpOut = fopen("earthquake.out", "w");
+	FILE *fpOut = fopen("khademul.out", "w");
 	if(fpOut==NULL) {
 		printLog("Unable to open earthquake.out. Check permission");
-		exit(EXIT_FAILURE);
+		exit(1);
 	}
 
 	const char* months[12] =
@@ -218,7 +231,7 @@ int main() {
 	};
 	fprintf(fpOut, "# %.2d %s %d %.2d:%.2d:%.2d.%.3d %s %s %.1f %s [%s] (%.2f %.2f %.1f)\n",
 			day,months[month-1],year,hour,minute,second,milisecond,timezone,magnitudeType,
-			magnitudeSize,earthquakeName,eventId,longitude,latitude,depth);
+			magnitudeSize,earthquakeName.c_str(),eventId.c_str(),longitude,latitude,depth);
 
 	StationInfo stationInfos[300];
 
@@ -226,12 +239,15 @@ int main() {
 	int invalidCount=0;
 	int validEntryCount=0;
 	int totalSignalNames=0;
-	while(getline(&line, &len, fp)!=-1) {
+	while(getline(fp, line)) {
+		line = trim(line);
+		if(validEntryCount>300) {
+			continue;
+		}
 		int isValidRow=1;
-		trimLastNewLines(line);
-		//printf("%s\n", line);
+
 		StationInfo stationInfo;
-		char *networkCode = strtok(line," ");
+		char *networkCode = strtok((char *)line.c_str()," ");
 		if(isEqual(networkCode,"CE") || isEqual(networkCode,"CI") || isEqual(networkCode,"FA")
 				|| isEqual(networkCode,"NP") || isEqual(networkCode,"WR")) {
 
@@ -239,8 +255,6 @@ int main() {
 			sprintf(strTmp, "Entry #%3d ignored. Invalid network.",entryNumber);
 			printLog(strTmp);
 			isValidRow=0;
-			//invalidCount++;
-			//continue;
 		}
 		strcpy(stationInfo.networkCode,networkCode);
 
@@ -268,8 +282,7 @@ int main() {
 			sprintf(strTmp, "Entry #%3d ignored. Invalid station name.",entryNumber);
 			printLog(strTmp);
 			isValidRow=0;
-			//invalidCount++;
-			//continue;
+		
 		}
 		strcpy(stationInfo.stationCode,stationCode);
 
@@ -283,8 +296,7 @@ int main() {
 		} else {
 			sprintf(strTmp, "Entry #%3d ignored. Invalid band type.",entryNumber);
 			printLog(strTmp);
-			//invalidCount++;
-			//continue;
+	
 			isValidRow=0;
 		}
 		char *typeOfInstrument = strtok(NULL," ");
@@ -297,8 +309,7 @@ int main() {
 		} else {
 			sprintf(strTmp, "Entry #%3d ignored. Invalid type of instrument.",entryNumber);
 			printLog(strTmp);
-			//invalidCount++;
-			//continue;
+
 			isValidRow=0;
 		}
 		char *orientation = strtok(NULL," ");
@@ -307,13 +318,13 @@ int main() {
 			isValid=0;
 		} else {
 			if(orientation[0]>='0' && orientation[0]<='9') {
-				for(int i=0;i<strlen(orientation);i++) {
+				for(unsigned int i=0;i<strlen(orientation);i++) {
 					if(orientation[i]<'0' || orientation[i]>'9') {
 						isValid=0;
 					}
 				}
 			} else {
-				for(int i=0;i<strlen(orientation);i++) {
+				for(unsigned int i=0;i<strlen(orientation);i++) {
 					if((orientation[i]>='A' && orientation[i]<='Z') || (orientation[i]>='a' && orientation[i]<='z')) {
 
 					} else {
@@ -325,8 +336,7 @@ int main() {
 		if(!isValid) {
 			sprintf(strTmp, "Entry #%3d ignored. Invalid orientation.",entryNumber);
 			printLog(strTmp);
-			//invalidCount++;
-			//continue;
+
 			isValidRow=0;
 		} else {
 
@@ -334,7 +344,10 @@ int main() {
 		if(isValidRow==0){
 			invalidCount++;
 		} else {
-			for(int i=0;i<strlen(orientation);i++) {
+			for(unsigned int i=0;i<strlen(orientation);i++) {
+				if(totalSignalNames>=300) {
+					break;
+				}
 				strcpy(stationInfos[totalSignalNames].networkCode, stationInfo.networkCode);
 				strcpy(stationInfos[totalSignalNames].stationCode, stationInfo.stationCode);
 				stationInfos[totalSignalNames].orientation = orientation[i];
@@ -361,11 +374,8 @@ int main() {
 				stationInfos[i].orientation);
 	}
 
-	fclose(fp);
 	fclose(fpLog);
 	fclose(fpOut);
-	if(line) {
-		free(line);
-	}
+
 	return 0;
 }
